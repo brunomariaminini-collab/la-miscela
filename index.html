@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La Miscela · Assistente Design Thinking · TAG × Lavazza</title>
+<style>
+  :root{
+    --bg:#F7F4F1; --ink:#1E1E1E; --muted:#6B6660; --line:#E4DFDA;
+    --accent:#EE7660; --accent-dark:#C8102E; --lavazza-blue:#001489;
+    --card:#FFFFFF; --sticky:#FFF8DE; --sticky-border:#EFE3AC;
+    --ok:#3E8E5B; --shadow:0 4px 24px rgba(20,15,10,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;
+    font-size:15px;line-height:1.45;}
+  button{font-family:inherit;font-size:inherit;cursor:pointer;border:0;background:none;color:inherit}
+  button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ============ TEAM PICKER ============ */
+  #picker{position:fixed;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:var(--lavazza-blue);
+    color:#fff;z-index:100;padding:32px;}
+  #picker .brand{position:absolute;top:32px;left:32px;font-size:12px;
+    letter-spacing:2px;opacity:.75;font-weight:600}
+  #picker h1{font-size:56px;font-weight:700;margin:0 0 12px;letter-spacing:-1px}
+  #picker .sub{font-size:18px;opacity:.85;margin:0 0 8px;max-width:640px;text-align:center}
+  #picker .hint{font-size:13px;opacity:.6;margin:0 0 48px}
+  #picker .teams{display:grid;grid-template-columns:repeat(4,minmax(180px,220px));gap:16px}
+  #picker .team{padding:32px 20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);
+    border-radius:14px;font-size:20px;font-weight:600;transition:all .15s ease;color:#fff}
+  #picker .team:hover{background:rgba(238,118,96,.9);border-color:transparent;transform:translateY(-2px)}
+  #picker .team .num{font-size:44px;font-weight:700;display:block;margin-bottom:8px;opacity:.95}
+  #picker .foot{position:absolute;bottom:24px;font-size:11px;opacity:.5;letter-spacing:1px}
+
+  /* ============ APP LAYOUT ============ */
+  #app{display:none;height:100%;flex-direction:column}
+  #app.on{display:flex}
+
+  header.top{display:flex;align-items:center;padding:14px 24px;background:var(--ink);color:#fff;gap:16px}
+  .logo-dot{width:20px;height:20px;background:var(--accent);border-radius:50%}
+  .brand-text{font-weight:600;font-size:15px}
+  .brand-sep{opacity:.4;margin:0 4px}
+  .brand-eyebrow{font-size:11px;letter-spacing:2px;color:#9A968F;margin-left:16px}
+  .team-badge{margin-left:auto;background:#33302E;padding:6px 14px 6px 12px;border-radius:14px;
+    display:flex;align-items:center;gap:8px;font-size:13.5px}
+  .team-badge button.change{color:#B9B5AE;font-size:11px;text-decoration:underline}
+  .save-dot{width:8px;height:8px;border-radius:50%;background:#5FBF7A}
+  .save-txt{font-size:12px;color:#B9B5AE}
+
+  nav.stepper{background:#fff;box-shadow:var(--shadow);padding:14px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .step{display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:20px;color:var(--muted);transition:all .12s}
+  .step:hover{background:#F7F4F1;color:var(--ink)}
+  .step .n{width:28px;height:28px;border-radius:50%;background:#F7F4F1;color:var(--muted);
+    display:grid;place-items:center;font-size:12px;font-weight:700;border:1.5px solid #C9C4BE}
+  .step.active{color:var(--ink)}
+  .step.active .n{background:var(--accent);border-color:var(--accent);color:#fff}
+  .step.active .lbl{font-weight:600}
+  .sep{width:14px;height:2px;background:var(--line);border-radius:2px;flex:0 0 auto}
+  .stepper .note{margin-left:auto;font-size:12px;color:#B0ACA5;font-style:italic}
+
+  /* ============ MAIN ============ */
+  main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,780px) minmax(0,1fr);gap:24px;padding:24px;overflow:hidden}
+  main > .col-l, main > .col-r{display:none} /* reserved gutter */
+
+  .chat-wrap{grid-column:2;display:flex;flex-direction:column;background:var(--card);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;min-height:0}
+  .phase-banner{padding:18px 26px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px}
+  .phase-banner .dot{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;
+    display:grid;place-items:center;font-weight:700}
+  .phase-banner .title{font-weight:600;font-size:16px}
+  .phase-banner .rule{font-size:12.5px;color:var(--muted);margin-top:2px}
+
+  .messages{flex:1;overflow-y:auto;padding:24px 26px;display:flex;flex-direction:column;gap:14px;min-height:0}
+  .msg{max-width:88%;padding:12px 16px;border-radius:14px;font-size:14.5px;white-space:pre-wrap}
+  .msg.assistant{background:#F4F0ED;color:var(--ink);border-bottom-left-radius:4px;align-self:flex-start}
+  .msg.user{background:var(--accent);color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
+  .msg.system{align-self:center;background:transparent;color:var(--muted);font-style:italic;font-size:12.5px;padding:4px 8px;max-width:100%}
+  .msg .img-preview{display:block;max-width:280px;margin-top:8px;border-radius:8px;border:1px solid rgba(255,255,255,.35)}
+  .msg.assistant .img-preview{border-color:var(--line)}
+  .typing{color:var(--muted);font-style:italic;font-size:13px}
+
+  .composer{border-top:1px solid var(--line);padding:14px 20px 18px}
+  .composer .hint{font-size:11.5px;color:#B0ACA5;margin-bottom:8px}
+  .composer .row{display:flex;gap:10px;align-items:flex-end}
+  .composer textarea{flex:1;resize:none;font-family:inherit;font-size:14.5px;
+    padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#FDFBF9;
+    max-height:180px;min-height:44px;line-height:1.4}
+  .composer button.attach{width:44px;height:44px;border-radius:50%;background:#F4F0ED;color:var(--ink);
+    display:grid;place-items:center;flex:0 0 auto}
+  .composer button.attach:hover{background:#EDE9E4}
+  .composer button.send{width:44px;height:44px;border-radius:50%;background:var(--accent);color:#fff;
+    display:grid;place-items:center;flex:0 0 auto}
+  .composer button.send[disabled]{opacity:.35;cursor:not-allowed}
+  .composer .attached{margin-bottom:10px;display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)}
+  .composer .attached img{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+  .composer .attached button.rm{color:var(--accent-dark);font-size:11px;text-decoration:underline}
+
+  .quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .quick button{padding:8px 14px;border-radius:20px;background:#fff;border:1px solid var(--accent);
+    color:var(--accent);font-size:12.5px;font-weight:500}
+  .quick button:hover{background:var(--accent);color:#fff}
+
+  footer.foot{padding:12px 24px;background:#fff;border-top:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--muted)}
+  footer .clear{color:var(--accent-dark);text-decoration:underline;font-size:11.5px}
+
+  /* icons */
+  .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  @media (max-width:1100px){
+    main{grid-template-columns:1fr;padding:16px}
+    .chat-wrap{grid-column:1}
+    #picker .teams{grid-template-columns:repeat(2,1fr);gap:12px}
+    #picker h1{font-size:40px}
+    .stepper .note{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ TEAM PICKER ============ -->
+<div id="picker">
+  <div class="brand">LAVAZZA × TALENT GARDEN</div>
+  <h1>La Miscela</h1>
+  <p class="sub">Assistente Design Thinking — Design Thinking Masterclass</p>
+  <p class="hint">Scegli il tuo tavolo per iniziare</p>
+  <div class="teams">
+    <button class="team" data-team="1"><span class="num">1</span>Team 1</button>
+    <button class="team" data-team="2"><span class="num">2</span>Team 2</button>
+    <button class="team" data-team="3"><span class="num">3</span>Team 3</button>
+    <button class="team" data-team="4"><span class="num">4</span>Team 4</button>
+  </div>
+  <div class="foot">20 luglio 2026</div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+
+  <header class="top">
+    <div class="logo-dot"></div>
+    <div class="brand-text">La Miscela<span class="brand-sep">·</span>Assistente di fase</div>
+    <div class="brand-eyebrow">LAVAZZA × TALENT GARDEN</div>
+    <div class="team-badge">
+      <span id="teamLabel">Team 1</span>
+      <button class="change" id="changeTeam">cambia</button>
+    </div>
+    <span class="save-dot"></span><span class="save-txt" id="saveLbl">salvato</span>
+  </header>
+
+  <nav class="stepper" id="stepper">
+    <!-- steps injected -->
+    <div class="note">tutte le fasi sono sempre accessibili · il contesto della chat si mantiene tra le fasi</div>
+  </nav>
+
+  <main>
+    <div class="chat-wrap">
+      <div class="phase-banner">
+        <div class="dot" id="phaseNum">1</div>
+        <div>
+          <div class="title" id="phaseTitle">Empathize</div>
+          <div class="rule" id="phaseRule">Capire prima di risolvere. Chiedi aiuto a distinguere le note della mappa, a scavare, a trovare cosa manca.</div>
+        </div>
+      </div>
+
+      <div class="messages" id="messages"></div>
+
+      <div class="composer">
+        <div id="attachedBox"></div>
+        <div class="hint">Descrivi in due righe cosa stai facendo, o allega uno screenshot leggibile del Miro.</div>
+        <div class="row">
+          <button class="attach" id="attachBtn" title="Allega screenshot">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M21 11.5l-8.5 8.5a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.67 3.67 0 0 1 5.19 5.19l-8.84 8.84a1.83 1.83 0 0 1-2.6-2.6L15.5 6"/></svg>
+          </button>
+          <input type="file" id="fileInput" accept="image/*" hidden>
+          <textarea id="input" rows="1" placeholder="Scrivi all'assistente…"></textarea>
+          <button class="send" id="sendBtn" disabled title="Invia">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M4 4l16 8-16 8 3-8-3-8z"/></svg>
+          </button>
+        </div>
+        <div class="quick" id="quick"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span>La Miscela · Design Thinking Masterclass · 20 luglio 2026</span>
+    <button class="clear" id="clearBtn">svuota la conversazione di questo tavolo</button>
+  </footer>
+</div>
+
+<script>
+// ============ PHASE CONFIG ============
+const PHASES = [
+  {id:'empathize',   n:1, title:'Empathize',  rule:'Capire prima di risolvere. Chiedi aiuto a distinguere le note della mappa, a scavare, a trovare cosa manca.'},
+  {id:'define',      n:2, title:'Define',     rule:'La cerniera del metodo: da osservazioni a direzione. Riformula il POV, testa la larghezza degli How Might We.'},
+  {id:'ideate',      n:3, title:'Ideate',     rule:'Prima la quantità, poi la qualità. Nessuna valutazione in divergenza: chiedi carte-stimolo, nomi di famiglia, mai giudizi.'},
+  {id:'prototype',   n:4, title:'Prototype',  rule:'Pensare con le mani. Lavora sulla storia prima che sulle feature: dalle scene alle caratteristiche.'},
+  {id:'test',        n:5, title:'Test',       rule:'Qui l\'assistente cambia ruolo: diventa un cliente Lavazza simulato. Dichiara che voce vuoi intervistare e conduci il test.'}
+];
+
+const OPENERS = {
+  empathize: "Sono l'assistente della fase Empathize. Conosco le regole della mappa e il caso a cui state lavorando. Cosa state guardando ora?",
+  define:    "Passiamo a Define. Portami gli insight che avete evidenziato in Empathize: da lì costruiamo il POV e testiamo un How Might We.",
+  ideate:    "Ideate. Ora la regola è una: niente giudizi sulle idee. Vi aiuto a divergere. Da che HMW partite?",
+  prototype: "Prototype. Prima la scena, poi il prodotto. Iniziamo dallo storyboard: la scena 1 è \"contesto\" — dove si trova la persona?",
+  test:      "Ora cambio ruolo: sono un cliente Lavazza. Prima di iniziare, ditemi che tipo di cliente volete intervistare — esempio: «qualcuno che non compra mai deca perché lo considera acqua sporca», oppure «qualcuno entusiasta della modulazione di caffeina»."
+};
+
+const QUICK_ACTIONS = {
+  empathize: [
+    "Fai 3 domande per scavare",
+    "Questa nota è DICE o PENSA?",
+    "Cosa manca alla mappa?"
+  ],
+  define: [
+    "Riformula il mio POV",
+    "3 varianti di HMW",
+    "Il mio HMW è troppo stretto o largo?"
+  ],
+  ideate: [
+    "Pesca una carta-stimolo",
+    "Aiutami a nominare questa famiglia",
+    "Sfida la mia idea con un mondo lontano"
+  ],
+  prototype: [
+    "Verifica la scena 3",
+    "Dalla scena estrai la caratteristica",
+    "Che scena mi manca?"
+  ],
+  test: [
+    "Sei un cliente scettico sul deca",
+    "Sei entusiasta della modulazione di caffeina",
+    "Sei chi organizza cene a casa"
+  ]
+};
+
+// ============ MOCK RESPONSES — for the static preview only ============
+// Note: these mimic the tone of each phase prompt.
+// In deploy, this function is replaced by a fetch() to the Cloudflare Worker.
+async function mockReply({phase, text, hasImage}){
+  await new Promise(r=>setTimeout(r, 700 + Math.random()*600));
+  const t = (text||'').toLowerCase();
+  const img = hasImage ? " Ho aperto lo screenshot: le note sono leggibili, procedo.\n\n" : "";
+
+  const byPhase = {
+    empathize: [
+      img + "Distinguere DICE e PENSA è la mossa più difficile. Regola pratica: DICE è ciò che la persona pronuncia ad alta voce; PENSA è ciò che si direbbe a mente. \"Non sa di niente\" è DICE. \"Sembrerò quello con problemi di salute\" è PENSA — non lo dice, se lo pensa.\n\nGuardando la vostra mappa, PROVA ha solo 2 note. Provate a chiedervi: quando questa persona rinuncia al caffè della sera, che stato d'animo attraversa nei 30 secondi successivi?",
+      img + "Tre domande per scavare, tutte in ordine:\n1) Quando è stata l'ultima volta che questa persona ha ordinato un deca? Dove, con chi?\n2) Cosa ha detto ai suoi commensali quando l'ha ordinato?\n3) Se in quel momento avesse potuto ordinare un caffè normale senza conseguenze, l'avrebbe fatto? Perché sì o perché no?\n\nLe risposte a queste tre vi riempiono PROVA più di dieci discussioni astratte.",
+      img + "La vostra mappa è ricca sul quadrante FA (comportamenti osservabili) e povera su PENSA. Non è un caso: PENSA richiede inferenza, e in gruppo si tende a scriverci solo cose «sicure». Provate questa mossa: prendete ogni nota di FA e chiedetevi «se lo fa, cosa deve pensare (o negarsi) per farlo?». Quelle sono le note PENSA che vi mancano."
+    ],
+    define: [
+      img + "Test rapido sul vostro HMW: se contiene già COSA farete (una campagna, un packaging, un formato), è troppo stretto. Se potrebbe stare nel deck di qualunque azienda del largo consumo, è troppo largo. \n\nProvate a scriverlo con questa formula: «Come potremmo [verbo di trasformazione] [oggetto] per [persona specifica dalla mappa] così che [effetto desiderato]?». Poi togliete tutto ciò che restringe la soluzione.",
+      img + "Tre varianti di HMW a larghezza diversa, sulla stessa direzione:\n\n• Stretta: «Come potremmo dare al decaffeinato un nome e un packaging che ne evochino piacere?»\n• Media: «Come potremmo trasformare il decaffeinato da rinuncia a scelta desiderabile per il rito serale?»\n• Larga: «Come potremmo dare valore ai momenti di consumo che oggi vengono vissuti come compromesso?»\n\nLa media è quasi sempre la più utile: ha spazio per divergere e vincoli sufficienti per convergere.",
+      img + "Il vostro POV è ben strutturato — persona, bisogno, insight ci sono tutti. Un affinamento: l'insight «vuole chiudere la giornata con un rito» è più forte se lo riformulate come tensione: «vuole chiudere la giornata con un rito, ma il deca oggi non gli sembra all'altezza del rito». Le tensioni generano HMW migliori dei bisogni piatti."
+    ],
+    ideate: [
+      img + "Vi pesco una carta-stimolo: 🍸 **L'aperitivo**. Non pensate al gusto — pensate alla struttura: un momento sociale codificato tra le 19 e le 21, con un rituale d'ordinazione noto a tutti, che si consuma a piccole dosi, in compagnia. \n\nCome sarebbe un decaffeinato che ruba questa logica? Non «un caffè da aperitivo», ma un momento del giorno codificato con la sua liturgia e la sua parola d'ordine. Buttate 5 idee in 3 minuti — senza discuterle.",
+      img + "Questa famiglia di idee ha in comune una cosa: mettono il consumo del deca in un momento sociale specifico e ritualizzato. Un nome che le tiene insieme potrebbe essere «L'ora del deca» — dove «ora» è sia il momento del giorno che la mossa culturale di prenderselo. \n\nAltri nomi possibili: «La liturgia serale», «Deca d'autore», «Il caffè che si aspetta».",
+      img + "Provate a sfidare la vostra idea più votata con un mondo lontano: 🇯🇵 il **rito del tè giapponese**. In quel mondo, il valore non è nella bevanda ma nella cerimonia. Se applicate questa logica al vostro concept: cosa dovreste togliere per far emergere il rito? Cosa dovreste aggiungere perché il gesto conti più del contenuto? Non è una critica — è un modo per scoprire cosa nella vostra idea è essenziale e cosa è decorazione."
+    ],
+    prototype: [
+      img + "La scena 3 «primo contatto» è la più fragile del vostro storyboard. Chiedetevi: in questa scena, la persona sta ancora decidendo se provare, o ha già deciso? Se sta decidendo, mostrate cosa la fa decidere. Se ha già deciso, la scena vera comincia dopo — e la scena 3 non serve. \n\nUna scena buona ha sempre: contesto (dove), azione (cosa fa), esito (cosa ottiene o non ottiene). Se una manca, la scena è ancora un'idea, non un prototipo.",
+      img + "Dalla vostra scena 5 «wow» — la persona apre la confezione a tavola e il momento diventa condiviso — estraggo tre caratteristiche del prodotto:\n\n• La confezione deve essere «da tavola», non «da dispensa» (design, materiali, dimensioni)\n• L'apertura deve produrre un piccolo gesto visibile ai commensali (un suono, un colore, un profumo)\n• Il formato deve permettere condivisione, non solo consumo individuale (dose per più tazze, o dose singola replicabile senza rumore)\n\nOgni caratteristica risponde alla domanda «perché serve»: perché senza, la scena 5 non funziona.",
+      img + "Vi manca una scena tra la 4 «uso» e la 5 «wow». Nella 4 la persona sta usando il prodotto; nella 5 succede qualcosa di sorprendente. Ma cosa scatena il wow? Serve un momento-ponte: la persona nota qualcosa (un dettaglio, una reazione degli altri, un sapore inaspettato), e da lì il momento diventa condiviso. Aggiungete quella scena: è dove nasce il valore percepito."
+    ],
+    test: [
+      "Ok, sono \"qualcuno che non compra mai deca perché lo considera acqua sporca\". Prima di ascoltare la vostra idea: ditemi cosa avete pensato per me. E niente slide, per favore — raccontatemi la scena.",
+      "Aspetta, aspetta. Voi dite che sarebbe «un rito serale». Ma io alla sera un caffè non lo cerco proprio. Perché dovrei iniziare a cercarlo ora? Cosa c'è di diverso nella vostra proposta rispetto a un ripiego?",
+      "Ok, l'idea del pacchetto «da tavola» mi torna. Ma poi lo apro, lo verso… e il gusto? Perché su quello io sono difficile. Se sento che è annacquato, tutto il resto non conta. Come mi rassicurate su questo?"
+    ]
+  };
+  const list = byPhase[phase] || byPhase.empathize;
+  return list[Math.floor(Math.random()*list.length)];
+}
+
+// ============ STATE ============
+const els = {
+  picker: document.getElementById('picker'),
+  app: document.getElementById('app'),
+  teamLabel: document.getElementById('teamLabel'),
+  changeTeam: document.getElementById('changeTeam'),
+  stepper: document.getElementById('stepper'),
+  phaseNum: document.getElementById('phaseNum'),
+  phaseTitle: document.getElementById('phaseTitle'),
+  phaseRule: document.getElementById('phaseRule'),
+  messages: document.getElementById('messages'),
+  input: document.getElementById('input'),
+  sendBtn: document.getElementById('sendBtn'),
+  attachBtn: document.getElementById('attachBtn'),
+  fileInput: document.getElementById('fileInput'),
+  attachedBox: document.getElementById('attachedBox'),
+  quick: document.getElementById('quick'),
+  clearBtn: document.getElementById('clearBtn'),
+  saveLbl: document.getElementById('saveLbl'),
+};
+
+const state = {
+  team: null,       // 1..4
+  phase: 'empathize',
+  attachedImage: null, // {dataUrl, name}
+  history: [],      // [{role, phase, text, image?}]
+};
+
+// ============ PERSISTENCE ============
+const key = t => `laMiscela_team_${t}_v1`;
+function load(){
+  try{
+    const raw = localStorage.getItem(key(state.team));
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+function save(){
+  try{
+    localStorage.setItem(key(state.team), JSON.stringify({
+      phase: state.phase,
+      history: state.history,
+    }));
+    flashSave();
+  }catch(e){}
+}
+let saveTimer = null;
+function flashSave(){
+  els.saveLbl.textContent = 'salvato';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{ els.saveLbl.textContent = 'salvato'; }, 1200);
+}
+
+// ============ RENDER ============
+function renderStepper(){
+  const nodes = [];
+  PHASES.forEach((p,i)=>{
+    if(i>0){
+      const s=document.createElement('div'); s.className='sep'; nodes.push(s);
+    }
+    const b = document.createElement('button');
+    b.className = 'step' + (state.phase===p.id?' active':'');
+    b.dataset.phase = p.id;
+    b.innerHTML = `<span class="n">${p.n}</span><span class="lbl">${p.title}</span>`;
+    b.onclick = ()=> setPhase(p.id, true);
+    nodes.push(b);
+  });
+  // prepend before .note
+  const note = els.stepper.querySelector('.note');
+  els.stepper.innerHTML = '';
+  nodes.forEach(n=>els.stepper.appendChild(n));
+  els.stepper.appendChild(note);
+}
+
+function renderPhaseBanner(){
+  const p = PHASES.find(x=>x.id===state.phase);
+  els.phaseNum.textContent = p.n;
+  els.phaseTitle.textContent = p.title;
+  els.phaseRule.textContent = p.rule;
+}
+
+function renderQuick(){
+  const acts = QUICK_ACTIONS[state.phase] || [];
+  els.quick.innerHTML = '';
+  acts.forEach(a=>{
+    const b=document.createElement('button');
+    b.textContent = a;
+    b.onclick = ()=>{ els.input.value = a; els.input.focus(); autoresize(); syncSend(); };
+    els.quick.appendChild(b);
+  });
+}
+
+function renderMessages(){
+  els.messages.innerHTML = '';
+  state.history.forEach(m=>{
+    if(m.role === 'system'){
+      const d=document.createElement('div'); d.className='msg system'; d.textContent=m.text;
+      els.messages.appendChild(d); return;
+    }
+    const d=document.createElement('div');
+    d.className='msg '+m.role;
+    d.textContent = m.text || '';
+    if(m.image){
+      const img=document.createElement('img'); img.className='img-preview'; img.src=m.image; img.alt='screenshot allegato';
+      d.appendChild(img);
+    }
+    els.messages.appendChild(d);
+  });
+  els.messages.scrollTop = els.messages.scrollHeight;
+}
+
+function setPhase(id, announce){
+  if(state.phase===id) return;
+  state.phase = id;
+  renderStepper();
+  renderPhaseBanner();
+  renderQuick();
+  if(announce){
+    const p = PHASES.find(x=>x.id===id);
+    state.history.push({role:'system', text:`— hai cambiato fase: ora sei in ${p.title} —`});
+    // opener from assistant
+    state.history.push({role:'assistant', phase:id, text: OPENERS[id]});
+    renderMessages();
+    save();
+  }
+}
+
+// ============ INTERACTIONS ============
+function autoresize(){
+  els.input.style.height='auto';
+  els.input.style.height = Math.min(els.input.scrollHeight, 180) + 'px';
+}
+function syncSend(){
+  const has = els.input.value.trim().length>0 || !!state.attachedImage;
+  els.sendBtn.disabled = !has;
+}
+
+els.input.addEventListener('input', ()=>{ autoresize(); syncSend(); });
+els.input.addEventListener('keydown', (e)=>{
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }
+});
+els.sendBtn.addEventListener('click', send);
+
+els.attachBtn.addEventListener('click', ()=> els.fileInput.click());
+els.fileInput.addEventListener('change', async (e)=>{
+  const f = e.target.files && e.target.files[0]; if(!f) return;
+  const dataUrl = await new Promise(res=>{
+    const r = new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(f);
+  });
+  state.attachedImage = {dataUrl, name:f.name};
+  renderAttached(); syncSend();
+  els.fileInput.value = '';
+});
+function renderAttached(){
+  if(!state.attachedImage){ els.attachedBox.innerHTML=''; return; }
+  els.attachedBox.innerHTML = '';
+  const wrap = document.createElement('div'); wrap.className='attached';
+  const img = document.createElement('img'); img.src = state.attachedImage.dataUrl;
+  const name = document.createElement('span'); name.textContent = state.attachedImage.name;
+  const rm = document.createElement('button'); rm.className='rm'; rm.textContent='rimuovi';
+  rm.onclick = ()=>{ state.attachedImage = null; renderAttached(); syncSend(); };
+  wrap.append(img, name, rm);
+  els.attachedBox.appendChild(wrap);
+}
+
+async function send(){
+  const text = els.input.value.trim();
+  const image = state.attachedImage;
+  if(!text && !image) return;
+
+  state.history.push({role:'user', phase:state.phase, text, image: image?image.dataUrl:null});
+  els.input.value=''; autoresize();
+  state.attachedImage = null; renderAttached(); syncSend();
+  renderMessages(); save();
+
+  // typing indicator
+  const typing = document.createElement('div'); typing.className='msg assistant typing'; typing.textContent='sto pensando…';
+  els.messages.appendChild(typing); els.messages.scrollTop = els.messages.scrollHeight;
+
+  try{
+    const reply = await mockReply({phase:state.phase, text, hasImage: !!image});
+    typing.remove();
+    state.history.push({role:'assistant', phase:state.phase, text:reply});
+    renderMessages(); save();
+  }catch(e){
+    typing.textContent = 'Errore. Riprova.';
+  }
+}
+
+els.clearBtn.addEventListener('click', ()=>{
+  if(!confirm('Vuoi davvero svuotare la conversazione di questo tavolo? Non si può annullare.')) return;
+  state.history = [];
+  state.history.push({role:'assistant', phase:state.phase, text: OPENERS[state.phase]});
+  renderMessages(); save();
+});
+
+// ============ BOOT ============
+function enterApp(team){
+  state.team = team;
+  els.teamLabel.textContent = 'Team ' + team;
+  const saved = load();
+  if(saved){
+    state.phase = saved.phase || 'empathize';
+    state.history = saved.history || [];
+  } else {
+    state.phase = 'empathize';
+    state.history = [{role:'assistant', phase:'empathize', text: OPENERS.empathize}];
+  }
+  els.picker.style.display = 'none';
+  els.app.classList.add('on');
+  renderStepper(); renderPhaseBanner(); renderQuick(); renderMessages();
+  save();
+}
+document.querySelectorAll('#picker .team').forEach(b=>{
+  b.addEventListener('click', ()=> enterApp(parseInt(b.dataset.team,10)));
+});
+els.changeTeam.addEventListener('click', ()=>{
+  els.app.classList.remove('on');
+  els.picker.style.display = 'flex';
+});
+</script>
+</body>
+</html>
