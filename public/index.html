@@ -235,43 +235,93 @@ const QUICK_ACTIONS = {
   ]
 };
 
-// ============ MOCK RESPONSES — for the static preview only ============
-// Note: these mimic the tone of each phase prompt.
-// In deploy, this function is replaced by a fetch() to the Cloudflare Worker.
-async function mockReply({phase, text, hasImage}){
-  await new Promise(r=>setTimeout(r, 700 + Math.random()*600));
-  const t = (text||'').toLowerCase();
-  const img = hasImage ? " Ho aperto lo screenshot: le note sono leggibili, procedo.\n\n" : "";
+// ============ CHIAMATA AL WORKER (Anthropic via Cloudflare) ============
+const WORKER_URL = 'https://la-miscela-api.brunomaria-minini.workers.dev';
+const MAX_TURNS = 24;            // quanti messaggi di storia inviare al modello
+const REQUEST_TIMEOUT_MS = 60000;
 
-  const byPhase = {
-    empathize: [
-      img + "Distinguere DICE e PENSA è la mossa più difficile. Regola pratica: DICE è ciò che la persona pronuncia ad alta voce; PENSA è ciò che si direbbe a mente. \"Non sa di niente\" è DICE. \"Sembrerò quello con problemi di salute\" è PENSA — non lo dice, se lo pensa.\n\nGuardando la vostra mappa, PROVA ha solo 2 note. Provate a chiedervi: quando questa persona rinuncia al caffè della sera, che stato d'animo attraversa nei 30 secondi successivi?",
-      img + "Tre domande per scavare, tutte in ordine:\n1) Quando è stata l'ultima volta che questa persona ha ordinato un deca? Dove, con chi?\n2) Cosa ha detto ai suoi commensali quando l'ha ordinato?\n3) Se in quel momento avesse potuto ordinare un caffè normale senza conseguenze, l'avrebbe fatto? Perché sì o perché no?\n\nLe risposte a queste tre vi riempiono PROVA più di dieci discussioni astratte.",
-      img + "La vostra mappa è ricca sul quadrante FA (comportamenti osservabili) e povera su PENSA. Non è un caso: PENSA richiede inferenza, e in gruppo si tende a scriverci solo cose «sicure». Provate questa mossa: prendete ogni nota di FA e chiedetevi «se lo fa, cosa deve pensare (o negarsi) per farlo?». Quelle sono le note PENSA che vi mancano."
-    ],
-    define: [
-      img + "Test rapido sul vostro HMW: se contiene già COSA farete (una campagna, un packaging, un formato), è troppo stretto. Se potrebbe stare nel deck di qualunque azienda del largo consumo, è troppo largo. \n\nProvate a scriverlo con questa formula: «Come potremmo [verbo di trasformazione] [oggetto] per [persona specifica dalla mappa] così che [effetto desiderato]?». Poi togliete tutto ciò che restringe la soluzione.",
-      img + "Tre varianti di HMW a larghezza diversa, sulla stessa direzione:\n\n• Stretta: «Come potremmo dare al decaffeinato un nome e un packaging che ne evochino piacere?»\n• Media: «Come potremmo trasformare il decaffeinato da rinuncia a scelta desiderabile per il rito serale?»\n• Larga: «Come potremmo dare valore ai momenti di consumo che oggi vengono vissuti come compromesso?»\n\nLa media è quasi sempre la più utile: ha spazio per divergere e vincoli sufficienti per convergere.",
-      img + "Il vostro POV è ben strutturato — persona, bisogno, insight ci sono tutti. Un affinamento: l'insight «vuole chiudere la giornata con un rito» è più forte se lo riformulate come tensione: «vuole chiudere la giornata con un rito, ma il deca oggi non gli sembra all'altezza del rito». Le tensioni generano HMW migliori dei bisogni piatti."
-    ],
-    ideate: [
-      img + "Vi pesco una carta-stimolo: 🍸 **L'aperitivo**. Non pensate al gusto — pensate alla struttura: un momento sociale codificato tra le 19 e le 21, con un rituale d'ordinazione noto a tutti, che si consuma a piccole dosi, in compagnia. \n\nCome sarebbe un decaffeinato che ruba questa logica? Non «un caffè da aperitivo», ma un momento del giorno codificato con la sua liturgia e la sua parola d'ordine. Buttate 5 idee in 3 minuti — senza discuterle.",
-      img + "Questa famiglia di idee ha in comune una cosa: mettono il consumo del deca in un momento sociale specifico e ritualizzato. Un nome che le tiene insieme potrebbe essere «L'ora del deca» — dove «ora» è sia il momento del giorno che la mossa culturale di prenderselo. \n\nAltri nomi possibili: «La liturgia serale», «Deca d'autore», «Il caffè che si aspetta».",
-      img + "Provate a sfidare la vostra idea più votata con un mondo lontano: 🇯🇵 il **rito del tè giapponese**. In quel mondo, il valore non è nella bevanda ma nella cerimonia. Se applicate questa logica al vostro concept: cosa dovreste togliere per far emergere il rito? Cosa dovreste aggiungere perché il gesto conti più del contenuto? Non è una critica — è un modo per scoprire cosa nella vostra idea è essenziale e cosa è decorazione."
-    ],
-    prototype: [
-      img + "La scena 3 «primo contatto» è la più fragile del vostro storyboard. Chiedetevi: in questa scena, la persona sta ancora decidendo se provare, o ha già deciso? Se sta decidendo, mostrate cosa la fa decidere. Se ha già deciso, la scena vera comincia dopo — e la scena 3 non serve. \n\nUna scena buona ha sempre: contesto (dove), azione (cosa fa), esito (cosa ottiene o non ottiene). Se una manca, la scena è ancora un'idea, non un prototipo.",
-      img + "Dalla vostra scena 5 «wow» — la persona apre la confezione a tavola e il momento diventa condiviso — estraggo tre caratteristiche del prodotto:\n\n• La confezione deve essere «da tavola», non «da dispensa» (design, materiali, dimensioni)\n• L'apertura deve produrre un piccolo gesto visibile ai commensali (un suono, un colore, un profumo)\n• Il formato deve permettere condivisione, non solo consumo individuale (dose per più tazze, o dose singola replicabile senza rumore)\n\nOgni caratteristica risponde alla domanda «perché serve»: perché senza, la scena 5 non funziona.",
-      img + "Vi manca una scena tra la 4 «uso» e la 5 «wow». Nella 4 la persona sta usando il prodotto; nella 5 succede qualcosa di sorprendente. Ma cosa scatena il wow? Serve un momento-ponte: la persona nota qualcosa (un dettaglio, una reazione degli altri, un sapore inaspettato), e da lì il momento diventa condiviso. Aggiungete quella scena: è dove nasce il valore percepito."
-    ],
-    test: [
-      "Ok, sono \"qualcuno che non compra mai deca perché lo considera acqua sporca\". Prima di ascoltare la vostra idea: ditemi cosa avete pensato per me. E niente slide, per favore — raccontatemi la scena.",
-      "Aspetta, aspetta. Voi dite che sarebbe «un rito serale». Ma io alla sera un caffè non lo cerco proprio. Perché dovrei iniziare a cercarlo ora? Cosa c'è di diverso nella vostra proposta rispetto a un ripiego?",
-      "Ok, l'idea del pacchetto «da tavola» mi torna. Ma poi lo apro, lo verso… e il gusto? Perché su quello io sono difficile. Se sento che è annacquato, tutto il resto non conta. Come mi rassicurate su questo?"
-    ]
+// Converte un messaggio della UI in blocchi di contenuto Anthropic.
+function toBlocks(m){
+  const blocks = [];
+  if (m.role === 'user' && m.image) {
+    const comma = m.image.indexOf(',');
+    blocks.push({ type:'image', source:{ type:'base64',
+      media_type: m.image.slice(5, m.image.indexOf(';')),
+      data: m.image.slice(comma+1) } });
+  }
+  const t = (m.text && m.text.trim()) || (m.image ? 'Ho allegato uno screenshot del canvas. Cosa vedi?' : '');
+  if (t) blocks.push({ type:'text', text: t });
+  return blocks;
+}
+
+// Costruisce la history nel formato Anthropic:
+// - taglia ai messaggi piu recenti
+// - manda come immagine solo l'ULTIMO screenshot (i vecchi diventano nota testuale)
+// - scarta gli "assistant" iniziali (l'API vuole che si parta da user)
+// - fonde i messaggi consecutivi con lo stesso ruolo (l'API vuole ruoli alternati)
+function buildAnthropicMessages(){
+  let msgs = state.history.filter(m => m.role==='user' || m.role==='assistant');
+  msgs = msgs.slice(-MAX_TURNS);
+
+  let lastImg = -1;
+  msgs.forEach((m,i)=>{ if(m.image) lastImg = i; });
+  msgs = msgs.map((m,i)=>{
+    if (m.image && i !== lastImg) {
+      return { role:m.role, phase:m.phase, image:null,
+        text: (((m.text||'').trim()) + ' [screenshot allegato in un messaggio precedente]').trim() };
+    }
+    return m;
+  });
+
+  while (msgs.length && msgs[0].role !== 'user') msgs.shift();
+
+  const out = [];
+  for (const m of msgs) {
+    const blocks = toBlocks(m);
+    if (!blocks.length) continue;
+    const prev = out[out.length-1];
+    if (prev && prev.role === m.role) prev.content.push(...blocks);
+    else out.push({ role:m.role, content: blocks });
+  }
+  return out;
+}
+
+async function askAssistant({phase}){
+  const messages = buildAnthropicMessages();
+  if (!messages.length) throw new Error('nessun messaggio da inviare');
+
+  const attempt = async () => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(()=>ctrl.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(WORKER_URL, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ phase, messages }),
+        signal: ctrl.signal
+      });
+      if (!res.ok) {
+        let detail = '';
+        try { const e = await res.json(); detail = e.error ? ' - '+e.error+(e.detail? ': '+e.detail : '') : ''; } catch(_){}
+        const err = new Error('HTTP '+res.status+detail);
+        err.status = res.status;
+        throw err;
+      }
+      const data = await res.json();
+      if (!data.reply) throw new Error('risposta vuota dal server');
+      return data.reply;
+    } finally { clearTimeout(timer); }
   };
-  const list = byPhase[phase] || byPhase.empathize;
-  return list[Math.floor(Math.random()*list.length)];
+
+  try { return await attempt(); }
+  catch(e){
+    // un solo retry automatico, per errori di rete/timeout/5xx (mai per i 4xx)
+    if (!e.status || e.status >= 500) {
+      await new Promise(r=>setTimeout(r, 1200));
+      return await attempt();
+    }
+    throw e;
+  }
 }
 
 // ============ STATE ============
@@ -297,6 +347,7 @@ const els = {
 
 const state = {
   team: null,       // 1..4
+  busy: false,      // richiesta in volo: blocca doppio invio
   phase: 'empathize',
   attachedImage: null, // {dataUrl, name}
   history: [],      // [{role, phase, text, image?}]
@@ -311,14 +362,23 @@ function load(){
     return JSON.parse(raw);
   }catch(e){ return null; }
 }
+// Le immagini NON si salvano in localStorage (quota ~5MB):
+// restano in memoria per la sessione; dopo un refresh resta una nota testuale.
+function serializableHistory(){
+  return state.history.slice(-80).map(m => {
+    if (!m.image) return m;
+    return { role:m.role, phase:m.phase, image:null,
+      text: (((m.text||'').trim()) || 'Screenshot allegato') + ' [screenshot non conservato dopo il refresh]' };
+  });
+}
 function save(){
   try{
     localStorage.setItem(key(state.team), JSON.stringify({
       phase: state.phase,
-      history: state.history,
+      history: serializableHistory(),
     }));
     flashSave();
-  }catch(e){}
+  }catch(e){ console.warn('salvataggio non riuscito', e); }
 }
 let saveTimer = null;
 function flashSave(){
@@ -408,7 +468,7 @@ function autoresize(){
 }
 function syncSend(){
   const has = els.input.value.trim().length>0 || !!state.attachedImage;
-  els.sendBtn.disabled = !has;
+  els.sendBtn.disabled = state.busy || !has;
 }
 
 els.input.addEventListener('input', ()=>{ autoresize(); syncSend(); });
@@ -418,13 +478,40 @@ els.input.addEventListener('keydown', (e)=>{
 els.sendBtn.addEventListener('click', send);
 
 els.attachBtn.addEventListener('click', ()=> els.fileInput.click());
+// Ridimensiona e comprime lo screenshot lato client:
+// lato lungo max 1568px, JPEG qualita 0.85. Richieste leggere, immagini leggibili dal modello.
+function processImageFile(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error('lettura file fallita'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error('immagine non valida'));
+      img.onload = ()=>{
+        const MAX = 1568;
+        let w = img.width, h2 = img.height;
+        const scale = Math.min(1, MAX/Math.max(w,h2));
+        w = Math.round(w*scale); h2 = Math.round(h2*scale);
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h2;
+        c.getContext('2d').drawImage(img, 0, 0, w, h2);
+        resolve(c.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 els.fileInput.addEventListener('change', async (e)=>{
   const f = e.target.files && e.target.files[0]; if(!f) return;
-  const dataUrl = await new Promise(res=>{
-    const r = new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(f);
-  });
-  state.attachedImage = {dataUrl, name:f.name};
-  renderAttached(); syncSend();
+  try{
+    const dataUrl = await processImageFile(f);
+    state.attachedImage = {dataUrl, name:f.name};
+    renderAttached(); syncSend();
+  }catch(err){
+    alert('Non riesco a leggere questa immagine: ' + err.message);
+  }
   els.fileInput.value = '';
 });
 function renderAttached(){
@@ -440,26 +527,43 @@ function renderAttached(){
 }
 
 async function send(){
+  if (state.busy) return;
   const text = els.input.value.trim();
   const image = state.attachedImage;
   if(!text && !image) return;
 
   state.history.push({role:'user', phase:state.phase, text, image: image?image.dataUrl:null});
   els.input.value=''; autoresize();
-  state.attachedImage = null; renderAttached(); syncSend();
+  state.attachedImage = null; renderAttached();
   renderMessages(); save();
+  await runAssistant();
+}
 
-  // typing indicator
-  const typing = document.createElement('div'); typing.className='msg assistant typing'; typing.textContent='sto pensando…';
-  els.messages.appendChild(typing); els.messages.scrollTop = els.messages.scrollHeight;
+async function runAssistant(){
+  state.busy = true; syncSend();
+  const typing = document.createElement('div');
+  typing.className='msg assistant typing';
+  typing.textContent='sto pensando\u2026';
+  els.messages.appendChild(typing);
+  els.messages.scrollTop = els.messages.scrollHeight;
 
   try{
-    const reply = await mockReply({phase:state.phase, text, hasImage: !!image});
+    const reply = await askAssistant({phase:state.phase});
     typing.remove();
     state.history.push({role:'assistant', phase:state.phase, text:reply});
     renderMessages(); save();
   }catch(e){
-    typing.textContent = 'Errore. Riprova.';
+    console.error('askAssistant error', e);
+    typing.classList.remove('typing');
+    typing.style.color = '#C8102E';
+    typing.textContent = 'Connessione non riuscita ('+ (e.message||'errore') +'). ';
+    const retry = document.createElement('button');
+    retry.textContent = 'Riprova';
+    retry.style.cssText = 'color:#C8102E;text-decoration:underline;font-weight:600;cursor:pointer';
+    retry.onclick = ()=>{ typing.remove(); runAssistant(); };
+    typing.appendChild(retry);
+  }finally{
+    state.busy = false; syncSend();
   }
 }
 
